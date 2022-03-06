@@ -34,6 +34,7 @@ jobs:
        # Deploy Azure function app
        # Note: Using Azure CLI for deployment as it provides more verbose error messages
        - name: 'Creating Azure Function App'
+         id: deploy
          uses: azure/CLI@v1
          with:
            inlineScript: |
@@ -53,6 +54,9 @@ jobs:
                  echo "setting output $OUTPUT_NAME=$OUTPUT_VALUE"
                  echo "::set-output name=$OUTPUT_NAME::$OUTPUT_VALUE"
                done
+
+      outputs:
+        storageAccountName: ${{ steps.deploy.outputs.storageAccountName }}
  
     ############################################################################
 
@@ -82,7 +86,7 @@ jobs:
     ############################################################################
 
     deploy-az-function:
-      needs: [build-az-function]
+      needs: [build-az-function, deploy-az-infrastructure]
       runs-on: ubuntu-latest
       steps:
       
@@ -124,7 +128,9 @@ jobs:
          uses: azure/CLI@v1
          with:
            inlineScript: |
+             az config set extension.use_dynamic_install=yes_without_prompt
+             
              az storage azcopy blob upload -c content \
-             --account-name ${{ env.storageName }} \
+             --account-name ${{ needs.deploy-az-infrastructure.outputs.storageAccountName }} \
              -s "Client/*" --recursive \
  
